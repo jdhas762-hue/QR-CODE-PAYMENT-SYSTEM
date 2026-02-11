@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Merchant Risk Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; background: #f5f7fb; }
+        .panel { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; border-bottom: 1px solid #eceff4; text-align: left; }
+        .badge { padding: 4px 8px; border-radius: 12px; color: #fff; font-weight: bold; }
+        .LOW_RISK { background: #2e7d32; }
+        .MEDIUM_RISK { background: #ef6c00; }
+        .HIGH_RISK { background: #c62828; }
+        .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        pre { font-size: 12px; max-height: 280px; overflow: auto; }
+    </style>
+</head>
+<body>
+<h2>Merchant Risk Scoring Dashboard</h2>
+<div class="panel">
+    <table id="merchantTable">
+        <thead>
+        <tr>
+            <th>Merchant</th><th>Risk Score</th><th>Fraud Probability %</th><th>Suspicious</th><th>Replay</th>
+            <th>Expired Misuse</th><th>Device Mismatch</th><th>Location Changes</th><th>Status</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<div class="charts">
+    <div class="panel">
+        <h4>QR Generation Frequency (Hourly)</h4>
+        <pre id="frequencyGraph"></pre>
+    </div>
+    <div class="panel">
+        <h4>Risk Score Trend</h4>
+        <pre id="riskTrendGraph"></pre>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const endpoint = [[${dashboardEndpoint}]];
+    const tableBody = document.querySelector('#merchantTable tbody');
+
+    fetch(endpoint, {
+        headers: {
+            'X-Request-Nonce': Date.now().toString(),
+            'X-Request-Timestamp': Math.floor(Date.now() / 1000).toString(),
+            'X-Merchant-Id': 'admin'
+        }
+    })
+    .then(r => r.json())
+    .then(rows => {
+        tableBody.innerHTML = '';
+        rows.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${row.merchantId}</td>
+                <td>${Number(row.riskScore).toFixed(2)}</td>
+                <td>${Number(row.fraudProbability).toFixed(2)}</td>
+                <td>${row.suspiciousAttemptCount}</td>
+                <td>${row.replayAttemptCount}</td>
+                <td>${row.expiredQrMisuseAttempts}</td>
+                <td>${row.deviceMismatchCount}</td>
+                <td>${row.locationChangeCount}</td>
+                <td><span class="badge ${row.riskStatus}">${row.riskStatus}</span></td>
+            `;
+            tableBody.appendChild(tr);
+        });
+
+        const first = rows[0];
+        if (first) {
+            document.getElementById('frequencyGraph').textContent = JSON.stringify(first.qrGenerationFrequency, null, 2);
+            document.getElementById('riskTrendGraph').textContent = JSON.stringify(first.riskScoreTrend, null, 2);
+        }
+    });
+</script>
+</body>
+</html>
